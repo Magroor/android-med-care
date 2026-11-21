@@ -1,0 +1,10 @@
+.data/
+.env*.local
+.env
+.next/
+node_modules/
+.vercel
+*.tsbuildinfo
+.impeccable/
+.claude/settings.local.json
+next-env.d.ts
