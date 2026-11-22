@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, hardNavigate } from "@/lib/client";
+import PermissionsCard from "@/components/PermissionsCard";
 import { TEMPLATES, TEMPLATE_KEYS } from "@/lib/templates";
 
 type PublicSettings = {
@@ -338,6 +339,8 @@ export default function SettingsPage() {
           Flush all patient data
         </button>
       </Card>
+      <PermissionsCard />
+
       <Card title="Help & guides" hint="Illustrated manuals you can read on your phone or save as PDF.">
         <div className="flex flex-wrap gap-2">
           <a href="/manual" className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white">📘 User manual</a>

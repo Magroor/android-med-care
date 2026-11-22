@@ -54,3 +54,30 @@ self.addEventListener("notificationclick", (event) => {
     })(),
   );
 });
+
+/* Best-effort background check (Chrome on Android, installed app only; the browser decides when it runs).
+   Real-time alerts come from Web Push above; this is a safety net if a push was missed. */
+self.addEventListener("periodicsync", (event) => {
+  if (event.tag !== "check-alerts") return;
+  event.waitUntil(
+    (async () => {
+      try {
+        const res = await fetch("/api/alerts", { credentials: "same-origin", cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        for (const u of (data.urgent || []).slice(0, 3)) {
+          await self.registration.showNotification("🚨 Urgent patient message", {
+            body: "New urgent patient message. Tap to open.",
+            tag: "urgent-" + u.id,
+            requireInteraction: true,
+            icon: "/icons/icon-192.png",
+            badge: "/icons/icon-192.png",
+            data: { url: "/patients/" + u.patientId },
+          });
+        }
+      } catch {
+        /* offline or signed out: nothing to do */
+      }
+    })(),
+  );
+});
