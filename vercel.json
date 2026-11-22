@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "node scripts/migrate.mjs && next build",
+  "regions": ["sin1"],
   "crons": [{ "path": "/api/worker/tick", "schedule": "0 8 * * *" }]
 }
