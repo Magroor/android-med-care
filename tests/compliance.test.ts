@@ -203,3 +203,18 @@ describe("patient data deletion", () => {
     expect(await db.select().from(appointments).where(eq(appointments.patientId, p.id))).toHaveLength(0);
   });
 });
+
+describe("clinic phone in hand-off replies", () => {
+  it("shows the clinic phone when configured (Roman Urdu and English), nothing when empty", async () => {
+    await saveSettings({ clinicPhone: "+92 331 9758081" });
+    await say("923001000050", "receptionist se baat karni hai");
+    await say("923001000051", "I want to talk to a human please");
+    const ur = (await thread("923001000050")).out[0].body;
+    const en = (await thread("923001000051")).out[0].body;
+    expect(ur).toContain("+92 331 9758081 par call");
+    expect(en).toContain("call the clinic on +92 331 9758081");
+    await saveSettings({ clinicPhone: "" });
+    await say("923001000052", "receptionist se baat karni hai");
+    expect((await thread("923001000052")).out[0].body).not.toContain("par call bhi");
+  });
+});

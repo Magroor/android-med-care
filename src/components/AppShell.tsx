@@ -132,7 +132,7 @@ async function showUrgentNotification(id: number, patientId: number) {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLogin = pathname.startsWith("/login") || pathname.startsWith("/privacy");
+  const isLogin = pathname.startsWith("/login") || pathname.startsWith("/privacy") || pathname.startsWith("/manual");
   const { data } = usePoll<Alerts>(isLogin ? null : "/api/alerts", 5000);
   const seen = useRef<Set<number> | null>(null);
   const notifPerm = useSyncExternalStore(subscribePerm, getPerm, getPermServer);

@@ -93,6 +93,7 @@ export function isWithinWindow(lastInboundAt: Date | null | undefined, now: Date
 export type SendPlan =
   | { mode: "text" }
   | { mode: "template"; name: string; language: string }
+  | { mode: "skip"; reason: string }
   | { mode: "fail"; error: string };
 
 /** Decide how to send: plain text (inside the window), approved template (outside), or fail fast. */
@@ -102,8 +103,13 @@ export function planSend(opts: {
   templateKey: string | null;
   templateName: string;
   templateLanguage: string;
+  /** paid templates enabled? (false = free-first: skip instead of sending a template) */
+  allowTemplates: boolean;
 }): SendPlan {
   if (!opts.connected || opts.inWindow) return { mode: "text" }; // simulator mode never needs templates
+  if (opts.templateKey && !opts.allowTemplates) {
+    return { mode: "skip", reason: "Skipped to stay free: the patient's 24-hour window is closed. Turn on \"Allow paid template messages\" in Settings to send this as a template." };
+  }
   if (opts.templateKey && opts.templateName) {
     return { mode: "template", name: opts.templateName, language: opts.templateLanguage || "en" };
   }

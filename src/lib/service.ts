@@ -28,6 +28,7 @@ export function toEngineSettings(s: Settings): EngineSettings {
     address: s.address,
     prepInstructions: s.prepInstructions,
     consultationFee: s.consultationFee,
+    clinicPhone: s.clinicPhone,
     autoConfirm: s.autoConfirm,
   };
 }
@@ -121,7 +122,15 @@ export async function dispatchPending(limit = 25) {
       templateKey: claimed.templateKey,
       templateName: tplName,
       templateLanguage: tplLang === "ur" ? settings.templateLangUr : settings.templateLangEn,
+      allowTemplates: settings.allowTemplates,
     });
+    if (plan.mode === "skip") {
+      await db
+        .update(messages)
+        .set({ status: "skipped", lastError: plan.reason, attempts: claimed.attempts + 1 })
+        .where(eq(messages.id, id));
+      continue;
+    }
     let res: SendResult;
     if (plan.mode === "fail") {
       res = { ok: false, retryable: false, error: plan.error };

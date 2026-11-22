@@ -23,7 +23,7 @@ function init() {
   if (isProd && !process.env.DATABASE_URL) {
     console.error("[db] DATABASE_URL is not set — set your Neon pooled connection string.");
   }
-  const url = process.env.DATABASE_URL ?? (isProd ? "postgresql://unset:unset@127.0.0.1:1/unset" : undefined);
+  const url = process.env.DATABASE_URL || (isProd ? "postgresql://unset:unset@127.0.0.1:1/unset" : undefined);
   if (url) {
     const pool = new Pool({
       connectionString: url,

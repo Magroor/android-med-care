@@ -13,12 +13,14 @@ type PublicSettings = {
   workDays: number[];
   slotMinutes: number;
   emergencyNumber: string;
+  clinicPhone: string;
   address: string;
   prepInstructions: string;
   consultationFee: string;
   defaultLanguage: "en" | "ur";
   autoReply: boolean;
   autoConfirm: boolean;
+  allowTemplates: boolean;
   templateReminderEn: string;
   templateReminderUr: string;
   templateUpdateEn: string;
@@ -120,6 +122,9 @@ export default function SettingsPage() {
         </Field>
         <Field label="Address (shared when patients ask for location)">
           <input className={input} value={s.address} onChange={(e) => set("address", e.target.value)} />
+        </Field>
+        <Field label="Clinic phone / WhatsApp Business number (shown when a patient asks for a person)">
+          <input className={input} placeholder="+92 3XX XXXXXXX" value={s.clinicPhone ?? ""} onChange={(e) => set("clinicPhone", e.target.value)} />
         </Field>
         <Field label="Emergency helpline number">
           <input className={input} value={s.emergencyNumber} onChange={(e) => set("emergencyNumber", e.target.value)} />
@@ -233,6 +238,12 @@ export default function SettingsPage() {
         title="WhatsApp templates (needed for reminders)"
         hint="WhatsApp allows free-form text only within 24h of the patient's last message. Reminders and clinic updates sent after that must use templates you create in Meta WhatsApp Manager → Message templates (category: Utility). Paste the exact text below, then enter each approved template's name here."
       >
+        <label className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
+          <input type="checkbox" className="mt-1 h-4 w-4" checked={s.allowTemplates} onChange={(e) => set("allowTemplates", e.target.checked)} />
+          <span>
+            <b>Allow paid template messages</b> (off = free). When the patient&apos;s 24-hour window is closed, reminders are skipped instead of being sent as paid templates. Reminders still go out for free whenever the patient has written in the last 24 hours.
+          </span>
+        </label>
         {TEMPLATE_KEYS.map((k) => {
           const t = TEMPLATES[k];
           const cap = k === "reminder" ? "Reminder" : "Update";
@@ -326,6 +337,13 @@ export default function SettingsPage() {
         >
           Flush all patient data
         </button>
+      </Card>
+      <Card title="Help & guides" hint="Illustrated manuals you can read on your phone or save as PDF.">
+        <div className="flex flex-wrap gap-2">
+          <a href="/manual" className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white">📘 User manual</a>
+          <a href="/manual/whatsapp-setup" className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-800">🔗 WhatsApp linking guide</a>
+          <a href="/privacy" className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-800">🔒 Privacy policy</a>
+        </div>
       </Card>
       <p className="mt-6 text-center text-xs text-slate-400">
         The assistant gives administrative and preliminary guidance only — it never diagnoses. All automated medical replies carry a disclaimer.

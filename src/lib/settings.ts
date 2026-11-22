@@ -11,12 +11,16 @@ export type Settings = {
   workDays: number[];
   slotMinutes: number;
   emergencyNumber: string;
+  /** clinic / WhatsApp Business phone shown when a patient asks for a person */
+  clinicPhone: string;
   address: string;
   prepInstructions: string;
   consultationFee: string;
   defaultLanguage: "en" | "ur";
   autoReply: boolean;
   autoConfirm: boolean;
+  /** allow PAID template messages outside the 24h window (off = free-first: such messages are skipped) */
+  allowTemplates: boolean;
   // approved WhatsApp template names (used outside the 24h window) + their Meta language codes
   templateReminderEn: string;
   templateReminderUr: string;
@@ -42,12 +46,14 @@ const DEFAULTS: Record<string, string> = {
   workDays: "1,2,3,4,5,6",
   slotMinutes: "30",
   emergencyNumber: "1122",
+  clinicPhone: "",
   address: "",
   consultationFee: "",
   prepInstructions:
     "Please bring a photo ID, previous prescriptions and any recent reports. Arrive 10 minutes early. If a blood test is planned, fast for 8–10 hours unless told otherwise (water is fine).",
   autoReply: "true",
   autoConfirm: "true",
+  allowTemplates: "false",
   templateReminderEn: "",
   templateReminderUr: "",
   templateUpdateEn: "",
@@ -99,12 +105,14 @@ export async function getSettings(): Promise<Settings> {
     workDays,
     slotMinutes: Math.max(10, Number(raw.slotMinutes) || 30),
     emergencyNumber: raw.emergencyNumber,
+    clinicPhone: raw.clinicPhone,
     address: raw.address,
     prepInstructions: raw.prepInstructions,
     consultationFee: raw.consultationFee,
     defaultLanguage: raw.defaultLanguage === "en" ? "en" : "ur",
     autoReply: raw.autoReply !== "false",
     autoConfirm: raw.autoConfirm !== "false",
+    allowTemplates: raw.allowTemplates === "true",
     templateReminderEn: raw.templateReminderEn,
     templateReminderUr: raw.templateReminderUr,
     templateUpdateEn: raw.templateUpdateEn,
@@ -119,11 +127,12 @@ export async function getSettings(): Promise<Settings> {
   };
 }
 
-export type SettingsPatch = Partial<Omit<Settings, "workDays" | "slotMinutes" | "autoReply" | "autoConfirm">> & {
+export type SettingsPatch = Partial<Omit<Settings, "workDays" | "slotMinutes" | "autoReply" | "autoConfirm" | "allowTemplates">> & {
   workDays?: number[];
   slotMinutes?: number;
   autoReply?: boolean;
   autoConfirm?: boolean;
+  allowTemplates?: boolean;
 };
 
 export async function saveSettings(patch: SettingsPatch) {
@@ -154,12 +163,14 @@ export function publicSettings(s: Settings) {
     workDays: s.workDays,
     slotMinutes: s.slotMinutes,
     emergencyNumber: s.emergencyNumber,
+    clinicPhone: s.clinicPhone,
     address: s.address,
     prepInstructions: s.prepInstructions,
     consultationFee: s.consultationFee,
     defaultLanguage: s.defaultLanguage,
     autoReply: s.autoReply,
     autoConfirm: s.autoConfirm,
+    allowTemplates: s.allowTemplates,
     templateReminderEn: s.templateReminderEn,
     templateReminderUr: s.templateReminderUr,
     templateUpdateEn: s.templateUpdateEn,

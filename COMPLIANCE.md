@@ -46,3 +46,19 @@ A small clinic (say 100 appointments a month, 2 reminders each) means roughly 20
 - Encrypted secrets (AES-256-GCM), encrypted-at-rest Neon database, PIN login with DB-backed throttling, signed webhooks, HTTPS only.
 - Patient deletion: Patients → open a patient → "Delete this patient's data", or Settings → "Flush demo data" for everything.
 - Keep backups according to your own retention policy; Neon branches/backups also hold patient data.
+
+## Total running cost: what is free and what is not (checked 2026-11-22)
+
+| Item | Cost | Notes |
+|---|---|---|
+| WhatsApp Cloud API access, webhook, test number | Free | |
+| Replies to patients (service messages) | Free up to **1,000/month per phone number**, then charged; **a payment method must be on file** or messages after the free tier are not delivered | [pricing](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing) |
+| Reminders as **templates** (utility) | **Paid** per delivered message (Pakistan has its own rate; see the rate card) | Off by default in this app ("free mode") |
+| Reminders as plain text inside the 24h window | Free (counts toward the 1,000) | Sent automatically when the patient wrote in the last 24h |
+| Neon Postgres | Free plan: 1 GB storage and 100 compute-hours per project per month ([Neon FAQ](https://neon.com/faqs/free-plan-limits-and-quotas)); plenty for a single clinic | Database sleeps when idle; the first request after a quiet period is slightly slower |
+| GitHub private repo | Free | |
+| Vercel | **Hobby is free but only for personal, non-commercial use** ([docs](https://vercel.com/docs/plans/hobby)); a clinic is commercial, so strictly you need **Pro ($20/month)** or another host. Hobby cron is once a day | Use a free external pinger (cron-job.org) for the 2-minute tick |
+| Web push, PWA install | Free | |
+| Domain name (optional) | ~$10-15/year | `*.vercel.app` works without one |
+
+**Free-first mode (default):** with "Allow paid template messages" off, the app never sends a paid template. Replies and reminders go out as free text whenever the patient has messaged within 24h; otherwise the reminder is marked *skipped* and the doctor can call or message manually. Turn the setting on only if you accept the per-message template cost.

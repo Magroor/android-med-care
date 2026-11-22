@@ -62,6 +62,7 @@ beforeEach(async () => {
   await saveSettings({
     phoneNumberId: "PHONE123",
     accessToken: "TOKEN",
+    allowTemplates: true,
     templateReminderUr: "appointment_reminder_ur",
     templateReminderEn: "appointment_reminder_en",
     templateUpdateUr: "appointment_update_ur",
@@ -212,6 +213,35 @@ describe("Meta errors", () => {
     await dispatchPending();
     const out = (await outMsgs(p.id)).find((x) => x.direction === "out")!;
     expect(out.status).toBe("failed");
+  });
+});
+
+describe("free mode (allowTemplates off, the default)", () => {
+  it("reminder outside the window is skipped: no Meta call, no retries, clear reason", async () => {
+    await saveSettings({ allowTemplates: false });
+    const p = await mkPatient({ lastInboundHoursAgo: 30 });
+    await mkAppt(p.id, 20);
+    await runMaintenance();
+    await runMaintenance();
+    expect(calls).toHaveLength(0);
+    const out = (await outMsgs(p.id)).find((x) => x.direction === "out")!;
+    expect(out.status).toBe("skipped");
+    expect(out.lastError).toContain("stay free");
+  });
+  it("reminder inside the window is still sent (free service message)", async () => {
+    await saveSettings({ allowTemplates: false });
+    const p = await mkPatient({ lastInboundHoursAgo: 3 });
+    await mkAppt(p.id, 20);
+    await runMaintenance();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].body.type).toBe("text");
+  });
+  it("turning paid templates on sends the template", async () => {
+    await saveSettings({ allowTemplates: true });
+    const p = await mkPatient({ lastInboundHoursAgo: 30 });
+    await mkAppt(p.id, 20);
+    await runMaintenance();
+    expect(calls[0].body.type).toBe("template");
   });
 });
 

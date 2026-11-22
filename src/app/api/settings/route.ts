@@ -22,7 +22,7 @@ export async function PUT(req: Request) {
   const patch: SettingsPatch = {};
   const str = (k: string, max = 500) => (typeof b[k] === "string" ? (b[k] as string).trim().slice(0, max) : undefined);
 
-  for (const k of ["clinicName", "doctorName", "emergencyNumber", "phoneNumberId"] as const) {
+  for (const k of ["clinicName", "doctorName", "emergencyNumber", "clinicPhone", "phoneNumberId"] as const) {
     const v = str(k, 120);
     if (v !== undefined) patch[k] = v;
   }
@@ -58,6 +58,7 @@ export async function PUT(req: Request) {
   }
   if (typeof b.autoReply === "boolean") patch.autoReply = b.autoReply;
   if (typeof b.autoConfirm === "boolean") patch.autoConfirm = b.autoConfirm;
+  if (typeof b.allowTemplates === "boolean") patch.allowTemplates = b.allowTemplates;
 
   for (const k of ["templateReminderEn", "templateReminderUr", "templateUpdateEn", "templateUpdateUr"] as const) {
     const v = str(k, 512);

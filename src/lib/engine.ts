@@ -21,6 +21,7 @@ export type EngineSettings = ClinicConfig & {
   address: string;
   prepInstructions: string;
   consultationFee?: string;
+  clinicPhone?: string;
   autoConfirm: boolean;
 };
 
@@ -291,7 +292,7 @@ export function decide(inp: DecideInput): Decision {
       return result({ replies });
     }
     case "human": {
-      replies.push(M.human(s.doctorName));
+      replies.push(M.human(s.doctorName, s.clinicPhone));
       return result({ needsReview: true, replies: withClosedNotice(replies, closed, intent) });
     }
     case "thanks": {
@@ -299,7 +300,7 @@ export function decide(inp: DecideInput): Decision {
       break;
     }
     default: {
-      replies.push(M.unknown(s.doctorName, s.emergencyNumber));
+      replies.push(M.unknown(s.doctorName, s.emergencyNumber, s.clinicPhone));
       return result({ needsReview: true, replies: withClosedNotice(replies, closed, intent) });
     }
   }

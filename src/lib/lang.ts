@@ -191,10 +191,10 @@ function build(l: Lang) {
     optin: en
       ? "✅ Welcome back! You will receive appointment reminders and replies again. Reply STOP any time to opt out."
       : "✅ Khush aamdeed! Ab aap ko appointment ki yaad dehani aur jawab dobara milte rahenge. Kisi bhi waqt rokne ke liye STOP likhein.",
-    human: (doctor: string) =>
+    human: (doctor: string, phone?: string) =>
       en
-        ? `👤 I've alerted ${doctor}'s team. A staff member will reply to you here as soon as possible. For emergencies call your local emergency number.`
-        : `👤 Maine ${doctor} ki team ko ittila de di hai. Staff ka koi member jald yahin aap ko jawab dega. Emergency mein foran emergency number par call karein.`,
+        ? `👤 I've alerted ${doctor}'s team. A staff member will reply to you here as soon as possible.${phone ? ` You can also call the clinic on ${phone}.` : ""} For emergencies call your local emergency number.`
+        : `👤 Maine ${doctor} ki team ko ittila de di hai. Staff ka koi member jald yahin aap ko jawab dega.${phone ? ` Aap clinic ko ${phone} par call bhi kar sakte hain.` : ""} Emergency mein foran emergency number par call karein.`,
     consentNotice: en
       ? "🔒 By chatting with us you agree to receive replies and appointment reminders/updates on WhatsApp. Reply STOP any time to opt out. Please don't send ID, bank or card numbers here, and share medical reports only at the clinic."
       : "🔒 Yahan chat karne se aap hamare jawabat aur appointment ki yaad dehani/ittilaat WhatsApp par milne ki ijazat dete hain. Rokne ke liye kisi bhi waqt STOP likhein. Barah-e-karam yahan shanakhti card, bank ya card ke number na bhejein, aur medical reports sirf clinic mein dikhayein.",
@@ -205,10 +205,10 @@ function build(l: Lang) {
       ? "Sorry — that slot was just taken by someone else. Reply BOOK and I'll show the next available times."
       : "Maazrat — woh slot abhi kisi aur ne le liya. Agle dastiyab waqt dekhne ke liye BOOK likhein.",
     thanks: en ? "You're welcome! Message us any time. 🙂" : "Shukriya! Kisi bhi waqt paigham karein. 🙂",
-    unknown: (doctor: string, emerg: string) =>
+    unknown: (doctor: string, emerg: string, phone?: string) =>
       en
-        ? `Thanks for your message. I've passed it to ${doctor}'s team and they'll reply as soon as possible. In the meantime I can help with: BOOK (appointments), HOURS, LOCATION, FEES. For emergencies call ${emerg}.\n\n${f.disclaimer}`
-        : `Paigham ka shukriya. Maine isay ${doctor} ki team tak pohancha diya hai, woh jald jawab denge. Is dauran main in mein madad kar sakta hoon: BOOK (appointment), HOURS (waqt), LOCATION (address), FEES. Emergency mein ${emerg} par call karein.\n\n${f.disclaimer}`,
+        ? `Thanks for your message. I've passed it to ${doctor}'s team and they'll reply as soon as possible. In the meantime I can help with: BOOK (appointments), HOURS, LOCATION, FEES.${phone ? ` Clinic phone: ${phone}.` : ""} For emergencies call ${emerg}.\n\n${f.disclaimer}`
+        : `Paigham ka shukriya. Maine isay ${doctor} ki team tak pohancha diya hai, woh jald jawab denge. Is dauran main in mein madad kar sakta hoon: BOOK (appointment), HOURS (waqt), LOCATION (address), FEES.${phone ? ` Clinic ka phone: ${phone}.` : ""} Emergency mein ${emerg} par call karein.\n\n${f.disclaimer}`,
     unsupported: en
       ? "Sorry, I can only read text messages. Please type your question, or reply BOOK to schedule an appointment."
       : "Maazrat, main sirf text paigham parh sakta hoon. Barah-e-karam apna sawal likh kar bhejein, ya appointment ke liye BOOK likhein.",

@@ -120,4 +120,5 @@ export const STATUS_STYLES: Record<string, string> = {
   cancelled: "bg-slate-200 text-slate-600",
   completed: "bg-sky-100 text-sky-800",
   no_show: "bg-rose-100 text-rose-800",
+  skipped: "bg-slate-200 text-slate-600",
 };

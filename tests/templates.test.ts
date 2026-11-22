@@ -17,7 +17,7 @@ describe("24-hour customer-service window", () => {
 });
 
 describe("planSend", () => {
-  const base = { connected: true, inWindow: false, templateKey: "reminder", templateName: "appointment_reminder_ur", templateLanguage: "en" };
+  const base = { connected: true, inWindow: false, templateKey: "reminder", templateName: "appointment_reminder_ur", templateLanguage: "en", allowTemplates: true };
   it("inside window -> plain text, even for template-capable messages", () => {
     expect(planSend({ ...base, inWindow: true })).toEqual({ mode: "text" });
   });
@@ -37,6 +37,14 @@ describe("planSend", () => {
   it("simulator mode (not connected) never needs templates", () => {
     expect(planSend({ ...base, connected: false })).toEqual({ mode: "text" });
     expect(planSend({ ...base, connected: false, templateKey: null })).toEqual({ mode: "text" });
+  });
+  it("FREE MODE: outside the window a template message is skipped, never sent", () => {
+    const p = planSend({ ...base, allowTemplates: false });
+    expect(p.mode).toBe("skip");
+    expect((p as { reason: string }).reason).toContain("stay free");
+  });
+  it("free mode still sends plain text inside the window (free service message)", () => {
+    expect(planSend({ ...base, allowTemplates: false, inWindow: true })).toEqual({ mode: "text" });
   });
   it("defaults the language to en", () => {
     expect(planSend({ ...base, templateLanguage: "" })).toMatchObject({ language: "en" });

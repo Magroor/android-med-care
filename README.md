@@ -3,6 +3,9 @@
 Automates patient queries, triage, appointment booking, reminders and chat history over the
 **WhatsApp Business Cloud API**. Mobile-first web app (Next.js + PostgreSQL/Drizzle).
 
+## Guides
+- **User manual** (illustrated): `/manual` in the running app. **WhatsApp linking guide**: `/manual/whatsapp-setup`. Both print to PDF. Policy and cost notes: [COMPLIANCE.md](COMPLIANCE.md).
+
 ## Features
 - **Webhook engine** `GET/POST /api/webhook/whatsapp` — Meta verification handshake, `X-Hub-Signature-256` check, idempotent (message-id dedupe), delivery receipts.
 - **Intent + triage engine** (`src/lib/intent.ts`, `src/lib/engine.ts`) — booking / reschedule / cancel / confirm, clinic FAQs, symptoms, medication, preparation, **emergency keywords** (negation-aware: "no chest pain" is not flagged).
