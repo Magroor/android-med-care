@@ -4,7 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import Thread, { type ThreadMessage } from "@/components/Thread";
 import VoiceNote from "@/components/VoiceNote";
-import { api, fmtDateTime, STATUS_STYLES, usePoll } from "@/lib/client";
+import { api, fmtDateTime, hardNavigate, STATUS_STYLES, usePoll } from "@/lib/client";
 
 type Detail = {
   timezone: string;
@@ -240,6 +240,23 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
           </ul>
         </div>
       )}
+
+      <div className="mt-8 text-center">
+        <button
+          onClick={async () => {
+            if (!confirm("Permanently delete this patient and ALL their chats, appointments and notes? This cannot be undone.")) return;
+            try {
+              await api(`/api/patients/${id}`, { method: "DELETE" });
+              hardNavigate("/patients");
+            } catch (e) {
+              alert(e instanceof Error ? e.message : "Could not delete");
+            }
+          }}
+          className="text-xs text-red-500 underline"
+        >
+          Delete this patient&apos;s data
+        </button>
+      </div>
     </div>
   );
 }

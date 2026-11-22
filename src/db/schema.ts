@@ -14,6 +14,8 @@ export const patients = pgTable("patients", {
   name: text("name"),
   summary: text("summary"),
   lang: text("lang"), // "en" | "ur"; last detected language
+  optedOut: boolean("opted_out").notNull().default(false), // patient asked to stop messages (STOP / band karo)
+  consentAt: timestamp("consent_at", { withTimezone: true }), // when the consent/privacy notice was first sent
   lastIntent: text("last_intent"),
   // JSON: { options: string[]; consultType: string; replaceId?: number }
   pendingJson: text("pending_json"),
@@ -41,6 +43,9 @@ export const messages = pgTable(
     attempts: integer("attempts").notNull().default(0),
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
     lastError: text("last_error"),
+    // approved-template fallback for messages sent outside the 24h window
+    templateKey: text("template_key"), // reminder | update
+    templateParams: text("template_params"), // JSON string[]
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

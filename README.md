@@ -20,7 +20,7 @@ Automates patient queries, triage, appointment booking, reminders and chat histo
 2. Paste them in **Settings**. Copy the callback URL + verify token into Meta's webhook config (public HTTPS) and subscribe to `messages`.
 3. Until connected the app runs in **simulator mode** (`/simulator`) using the identical pipeline.
 
-> WhatsApp only allows free-form replies within 24h of the patient's last message; reminders outside the window need an approved template.
+> **24-hour rule.** WhatsApp allows free-form replies only within 24h of the patient's last message. Reminders and clinic updates outside that window are sent as **approved templates**: create them in Meta WhatsApp Manager (category *Utility*) using the exact texts shown in **Settings → WhatsApp templates**, then enter their names there. Costs, policy compliance, consent/STOP handling and what you must still do yourself are in [COMPLIANCE.md](COMPLIANCE.md). Put `https://<your-app>/privacy` in your Meta business profile.
 
 ## Tests
 `npx vitest run` — intent, triage, date parsing, slot conflicts, engine flows, payload parsing, signatures, backoff.

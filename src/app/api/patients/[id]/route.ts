@@ -54,3 +54,14 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }
+
+/** Permanently delete one patient and everything linked to them (chats, appointments, notes). */
+export async function DELETE(_req: Request, ctx: Ctx) {
+  const denied = await guard();
+  if (denied) return denied;
+  const id = Number((await ctx.params).id);
+  if (!Number.isInteger(id)) return NextResponse.json({ error: "Bad id" }, { status: 400 });
+  const deleted = await db.delete(patients).where(eq(patients.id, id)).returning({ id: patients.id });
+  if (deleted.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json({ ok: true });
+}

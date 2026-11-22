@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, hardNavigate } from "@/lib/client";
+import { TEMPLATES, TEMPLATE_KEYS } from "@/lib/templates";
 
 type PublicSettings = {
   clinicName: string;
@@ -18,6 +19,12 @@ type PublicSettings = {
   defaultLanguage: "en" | "ur";
   autoReply: boolean;
   autoConfirm: boolean;
+  templateReminderEn: string;
+  templateReminderUr: string;
+  templateUpdateEn: string;
+  templateUpdateUr: string;
+  templateLangEn: string;
+  templateLangUr: string;
   phoneNumberId: string;
   hasAccessToken: boolean;
   hasAppSecret: boolean;
@@ -53,6 +60,7 @@ export default function SettingsPage() {
   const [accessToken, setAccessToken] = useState("");
   const [appSecret, setAppSecret] = useState("");
   const [pin, setPin] = useState("");
+  const [wipeText, setWipeText] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -221,6 +229,47 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      <Card
+        title="WhatsApp templates (needed for reminders)"
+        hint="WhatsApp allows free-form text only within 24h of the patient's last message. Reminders and clinic updates sent after that must use templates you create in Meta WhatsApp Manager → Message templates (category: Utility). Paste the exact text below, then enter each approved template's name here."
+      >
+        {TEMPLATE_KEYS.map((k) => {
+          const t = TEMPLATES[k];
+          const cap = k === "reminder" ? "Reminder" : "Update";
+          return (
+            <div key={k} className="rounded-xl border border-slate-200 p-3">
+              <p className="mb-2 text-sm font-medium">
+                {cap} template · variables: {t.variables.map((v, i) => `{{${i + 1}}} ${v}`).join(", ")}
+              </p>
+              {(["ur", "en"] as const).map((l) => {
+                const nameKey = (k === "reminder" ? (l === "ur" ? "templateReminderUr" : "templateReminderEn") : l === "ur" ? "templateUpdateUr" : "templateUpdateEn") as
+                  | "templateReminderUr" | "templateReminderEn" | "templateUpdateUr" | "templateUpdateEn";
+                return (
+                  <div key={l} className="mb-3 last:mb-0">
+                    <p className="text-xs font-medium text-slate-500">{l === "ur" ? "Roman Urdu" : "English"} — text to submit (suggested name: {t.suggestedName[l]})</p>
+                    <pre className="mt-1 whitespace-pre-wrap rounded-lg bg-slate-50 p-2 text-xs text-slate-700">{t.body[l]}</pre>
+                    <p className="mt-1 text-[11px] text-slate-400">Sample values: {t.example[l].join(" | ")}</p>
+                    <input className={input + " mt-1"} placeholder={`Approved template name, e.g. ${t.suggestedName[l]}`} value={s[nameKey]} onChange={(e) => set(nameKey, e.target.value.trim())} />
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Language code — Roman Urdu templates">
+            <input className={input} value={s.templateLangUr} onChange={(e) => set("templateLangUr", e.target.value.trim())} />
+          </Field>
+          <Field label="Language code — English templates">
+            <input className={input} value={s.templateLangEn} onChange={(e) => set("templateLangEn", e.target.value.trim())} />
+          </Field>
+        </div>
+        <p className="text-xs text-slate-500">Roman Urdu is not a Meta language, so file those templates under English (en) unless you wrote them in Urdu script (ur).</p>
+        <button onClick={() => save()} className="w-fit rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white">
+          Save templates
+        </button>
+      </Card>
+
       <Card title="Security" hint="Protect patient data with a PIN. The webhook endpoint stays public (it is verified by signature).">
         <Field label={s.pinEnabled ? "Change PIN (4–12 digits)" : "Set a PIN (4–12 digits)"}>
           <input type="password" inputMode="numeric" className={input} value={pin} onChange={(e) => setPin(e.target.value)} />
@@ -250,6 +299,33 @@ export default function SettingsPage() {
             </>
           )}
         </div>
+      </Card>
+
+      <Card
+        title="Flush demo data"
+        hint="Deletes ALL patients, chats, appointments and clinical notes (for example the demo/test data before you go live). Your clinic settings, WhatsApp credentials, templates and PIN are kept. This cannot be undone."
+      >
+        <Field label="Type DELETE to confirm">
+          <input className={input} value={wipeText} onChange={(e) => setWipeText(e.target.value)} placeholder="DELETE" autoComplete="off" />
+        </Field>
+        <button
+          disabled={wipeText !== "DELETE"}
+          onClick={async () => {
+            try {
+              const r = await api<{ deleted: { patients: number; messages: number; appointments: number; notes: number } }>("/api/admin/reset", {
+                method: "POST",
+                json: { confirm: "DELETE" },
+              });
+              setWipeText("");
+              setMsg({ ok: true, text: `Flushed: ${r.deleted.patients} patients, ${r.deleted.messages} messages, ${r.deleted.appointments} appointments, ${r.deleted.notes} notes.` });
+            } catch (e) {
+              setMsg({ ok: false, text: e instanceof Error ? e.message : "Could not flush data" });
+            }
+          }}
+          className="w-fit rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+        >
+          Flush all patient data
+        </button>
       </Card>
       <p className="mt-6 text-center text-xs text-slate-400">
         The assistant gives administrative and preliminary guidance only — it never diagnoses. All automated medical replies carry a disclaimer.

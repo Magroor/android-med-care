@@ -39,8 +39,9 @@ function init() {
   const { PGlite } = req("@electric-sql/pglite");
   const { drizzle } = req("drizzle-orm/pglite");
   const { migrate } = req("drizzle-orm/pglite/migrator");
-  const dir = path.join(process.cwd(), ".data", "pgdata");
-  fs.mkdirSync(dir, { recursive: true });
+  // PGLITE_DIR=memory:// gives an in-memory database (used by integration tests)
+  const dir = process.env.PGLITE_DIR ?? path.join(process.cwd(), ".data", "pgdata");
+  if (!dir.startsWith("memory:")) fs.mkdirSync(dir, { recursive: true });
   const d = drizzle(new PGlite(dir));
   return { db: d as unknown as Db, migrate: () => migrate(d, { migrationsFolder }) as Promise<void> };
 }

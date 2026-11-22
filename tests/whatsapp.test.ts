@@ -10,7 +10,7 @@ const payload = {
       changes: [
         {
           value: {
-            contacts: [{ wa_id: "919876543210", profile: { name: "Asha Patel" } }],
+            contacts: [{ wa_id: "919876543210", profile: { name: "Ali Raza" } }],
             messages: [
               { from: "919876543210", id: "wamid.AAA", timestamp: "1717300000", type: "text", text: { body: " Hello doctor " } },
               { from: "919876543210", id: "wamid.BBB", timestamp: "1717300001", type: "image" },
@@ -29,7 +29,7 @@ describe("webhook payload parsing", () => {
   const parsed = parseWebhookPayload(payload);
 
   it("extracts text messages with profile names", () => {
-    expect(parsed.messages[0]).toMatchObject({ from: "919876543210", id: "wamid.AAA", text: "Hello doctor", name: "Asha Patel", type: "text" });
+    expect(parsed.messages[0]).toMatchObject({ from: "919876543210", id: "wamid.AAA", text: "Hello doctor", name: "Ali Raza", type: "text" });
   });
   it("keeps non-text messages with empty text so the bot can reply 'text only'", () => {
     expect(parsed.messages[1]).toMatchObject({ id: "wamid.BBB", type: "image", text: "" });

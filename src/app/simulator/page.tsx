@@ -29,7 +29,7 @@ const SAMPLES = [
 
 export default function SimulatorPage() {
   const [phone, setPhone] = useState("923001234567");
-  const [name, setName] = useState("Asha Patel");
+  const [name, setName] = useState("Ali Raza");
   const [text, setText] = useState("");
   // Patient id returned by /api/simulate, remembered per phone so it's used until the lookup catches up.
   const [created, setCreated] = useState<{ digits: string; id: number } | null>(null);

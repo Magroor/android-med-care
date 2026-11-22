@@ -40,7 +40,8 @@ export type Action =
   | { type: "clearPending" }
   | { type: "book"; start: Date; consultType: string; status: "confirmed" | "pending"; replaceId?: number | null }
   | { type: "cancel"; id: number }
-  | { type: "patientConfirm"; id: number };
+  | { type: "patientConfirm"; id: number }
+  | { type: "setOptOut"; value: boolean };
 
 export type DecideInput = {
   /** reply language; defaults to English */
@@ -278,6 +279,20 @@ export function decide(inp: DecideInput): Decision {
       const salam = /^\s*(as+a?l+a?m|salam|slam|aoa|السلام)/i.test(text);
       replies.push(M.greeting(inp.patientName ?? "", s.clinicName, salam));
       break;
+    }
+    case "optout": {
+      actions.push({ type: "setOptOut", value: true }, { type: "clearPending" });
+      replies.push(M.optout);
+      return result({ replies });
+    }
+    case "optin": {
+      actions.push({ type: "setOptOut", value: false });
+      replies.push(M.optin);
+      return result({ replies });
+    }
+    case "human": {
+      replies.push(M.human(s.doctorName));
+      return result({ needsReview: true, replies: withClosedNotice(replies, closed, intent) });
     }
     case "thanks": {
       replies.push(M.thanks);

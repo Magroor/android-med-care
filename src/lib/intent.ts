@@ -15,6 +15,9 @@ export type Intent =
   | "medication"
   | "preparation"
   | "greeting"
+  | "optout"
+  | "optin"
+  | "human"
   | "thanks"
   | "unknown";
 
@@ -286,6 +289,9 @@ export function classify(text: string, ctx: { hasPending?: boolean } = {}): Clas
 
   const mk = (intent: Intent): Classification => ({ intent, urgent: false, keywords: [] });
 
+  // consent: STOP / START (WhatsApp policy: opt-outs must be honoured)
+  if (/^(stop|stop all|stop messages?|unsubscribe|opt ?out|band karo|band kar do|band kardo|band karein|mat bhejo|mat bhejein|mat bheje|messages? band( karo| kar do| kardo)?|msg band( karo| kar do)?)[.! ]*$/.test(t)) return mk("optout");
+  if (/^(start|subscribe|resume|opt ?in|shuru|dobara shuru|messages? shuru( karo| kar do)?)[.! ]*$/.test(t)) return mk("optin");
   if (ctx.hasPending && /^\s*([1-9])\s*[.)]?\s*(please)?\s*$/.test(t)) return mk("choose");
   if (/^(yes|y|yep|yeah|yup|ok|okay|sure|confirm|confirmed|yes confirm|yes please|confirm please|i confirm|done|haan|han|ha|ji|jee|g|ji haan|ji han|jee haan|haan ji|han ji|theek hai|thik hai|theek h|thik h|ok ji|okay ji|bilkul|zaroor|confirm kar do|confirm kar dein|kar do|kardo|book kar do)[.! ]*$/.test(t)) {
     return mk("confirm");
@@ -296,6 +302,8 @@ export function classify(text: string, ctx: { hasPending?: boolean } = {}): Clas
     return mk("reschedule");
   }
   if (/\b(cancel|call off|won't be able to come|cannot come|can't come|mansookh|(nahi|nhi|ni) (aa|a) (sak|pa)\w*|cancel (kar|kr)\w*)\b/.test(t)) return mk("cancel");
+  // human hand-off (WhatsApp policy: automation needs a clear escalation path)
+  if (!/\b(book|appointment|slot|cancel|resched)\b/.test(t) && /\b(human|real person|live agent|agent|receptionist|staff|operator|talk to (the )?(doctor|someone|a person)|speak to (the )?(doctor|someone|a person)|doctor se (baat|bat)|baat karni hai|baat karna hai|insaan se|banda chahiye|call (me|karein|kar do|kardo)|phone (karein|kar do|kardo))\b/.test(t)) return mk("human");
   // medication / preparation questions win over "appointment"/"visit" words and Roman Urdu time words
   if (/\b(medicine|medication|tablet|pill|dose|dosage|prescription|syrup|capsule|refill|dawai|dawa|goli|goliyan|nuskha|nuskhe)s?\b/.test(t) && !/\b(book|appointment)\b/.test(t)) {
     return mk("medication");

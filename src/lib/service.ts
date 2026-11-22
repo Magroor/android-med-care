@@ -1,13 +1,15 @@
-import { and, asc, eq, gt, inArray, lt, lte, or, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, lt, lte, or, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments, messages, patients } from "@/db/schema";
 import { decide, type Action, type EngineSettings, type PendingState } from "./engine";
 import { overlaps } from "./scheduling";
 import { sendPushToAll } from "./push";
+import { redactSensitive } from "./privacy";
 import { isLang, msgs, resolveLang, type Lang } from "./lang";
 import { getSettings, type Settings } from "./settings";
 import { formatSlot } from "./time";
-import { backoffSeconds, MAX_SEND_ATTEMPTS, sendWhatsAppText } from "./whatsapp";
+import { backoffSeconds, isWithinWindow, type SendResult, MAX_SEND_ATTEMPTS, planSend, sendWhatsAppTemplate, sendWhatsAppText } from "./whatsapp";
+import { reminderParams, updateParams, type TemplateKey } from "./templates";
 
 export function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, "");
@@ -40,7 +42,7 @@ export async function queueOutgoing(
   patientId: number,
   body: string,
   source: "auto" | "doctor" | "reminder" | "simulator" = "auto",
-  extra: { intent?: string | null } = {},
+  extra: { intent?: string | null; template?: { key: TemplateKey; params: string[] } } = {},
 ) {
   const [row] = await db
     .insert(messages)
@@ -50,6 +52,8 @@ export async function queueOutgoing(
       body,
       source,
       intent: extra.intent ?? null,
+      templateKey: extra.template?.key ?? null,
+      templateParams: extra.template ? JSON.stringify(extra.template.params) : null,
       status: "queued",
       read: true,
     })
@@ -87,11 +91,51 @@ export async function dispatchPending(limit = 25) {
     const [patient] = await db.select().from(patients).where(eq(patients.id, claimed.patientId));
     if (!patient) continue;
 
-    const res = await sendWhatsAppText(
-      { phoneNumberId: settings.phoneNumberId, accessToken: settings.accessToken },
-      patient.phone,
-      claimed.body,
-    );
+    // honour opt-outs: nothing but automated safety / STOP confirmations goes to a patient who opted out
+    if (patient.optedOut && claimed.source !== "auto") {
+      await db
+        .update(messages)
+        .set({ status: "failed", lastError: "Patient opted out of messages (STOP). Not sent.", attempts: claimed.attempts + 1 })
+        .where(eq(messages.id, id));
+      continue;
+    }
+
+    const connected = !!(settings.phoneNumberId && settings.accessToken);
+    const creds = { phoneNumberId: settings.phoneNumberId, accessToken: settings.accessToken };
+    const [lastIn] = await db
+      .select({ at: messages.createdAt })
+      .from(messages)
+      .where(and(eq(messages.patientId, patient.id), eq(messages.direction, "in")))
+      .orderBy(desc(messages.createdAt))
+      .limit(1);
+    const tplLang: Lang = isLang(patient.lang) ? patient.lang : settings.defaultLanguage;
+    const tplName =
+      claimed.templateKey === "reminder"
+        ? tplLang === "ur" ? settings.templateReminderUr : settings.templateReminderEn
+        : claimed.templateKey === "update"
+          ? tplLang === "ur" ? settings.templateUpdateUr : settings.templateUpdateEn
+          : "";
+    const plan = planSend({
+      connected,
+      inWindow: isWithinWindow(lastIn?.at),
+      templateKey: claimed.templateKey,
+      templateName: tplName,
+      templateLanguage: tplLang === "ur" ? settings.templateLangUr : settings.templateLangEn,
+    });
+    let res: SendResult;
+    if (plan.mode === "fail") {
+      res = { ok: false, retryable: false, error: plan.error };
+    } else if (plan.mode === "template") {
+      let params: string[] = [];
+      try {
+        params = JSON.parse(claimed.templateParams ?? "[]") as string[];
+      } catch {
+        params = [];
+      }
+      res = await sendWhatsAppTemplate(creds, patient.phone, plan.name, plan.language, params);
+    } else {
+      res = await sendWhatsAppText(creds, patient.phone, claimed.body);
+    }
     if (res.ok) {
       await db
         .update(messages)
@@ -156,7 +200,10 @@ export async function handleIncoming(input: IncomingInput) {
     patient = { ...patient, name: input.name.trim() };
   }
 
-  const bodyText = input.text || (input.unsupportedType ? `[${input.unsupportedType} message]` : "");
+  // never store or process ID / card / account numbers (WhatsApp policy: do not collect sensitive identifiers)
+  const red = redactSensitive(input.text);
+  const safeText = red.text;
+  const bodyText = safeText || (input.unsupportedType ? `[${input.unsupportedType} message]` : "");
 
   let incoming;
   try {
@@ -213,7 +260,7 @@ export async function handleIncoming(input: IncomingInput) {
 
   const decision = decide({
     lang,
-    text: input.text,
+    text: safeText,
     now,
     settings: engineSettings,
     patientName: patient.name,
@@ -240,17 +287,35 @@ export async function handleIncoming(input: IncomingInput) {
     await sendPushToAll({ title: "📅 Booking needs approval", body: "A patient requested an appointment", tag: `booking-${incoming.id}`, url: "/appointments" });
   }
 
+  if (decision.intent === "human") {
+    await sendPushToAll({ title: "💬 Patient wants to talk to staff", body: "Open MedAssist to reply", tag: `human-${incoming.id}`, url: `/patients/${patient.id}` });
+  }
+
+  const M = msgs(lang);
+  const consentIntent = decision.intent === "optout" || decision.intent === "optin";
   let replies = decision.replies;
-  if (settings.autoReply || decision.urgent) {
+  // an opted-out patient gets no automated replies (except the emergency safety reply) until they send START
+  const silenced = patient.optedOut && decision.intent !== "optin" && !decision.urgent;
+
+  if (settings.autoReply || decision.urgent || consentIntent) {
     // urgent messages always get the safety reply, even if auto-reply is switched off
     const applied = await applyActions(patient.id, decision.actions, engineSettings);
     if (applied.conflict) {
       // lost a race for the slot: replace the confirmation with an apology
-      replies = [
-        "Sorry — that slot was just taken by someone else. Reply BOOK and I'll show the next available times.",
-      ];
+      replies = [M.slotTaken];
     }
-    if (!settings.autoReply) replies = decision.urgent ? replies : [];
+    if (!settings.autoReply) replies = decision.urgent || consentIntent ? replies : [];
+    if (silenced) replies = [];
+
+    // first reply to a new patient carries the consent / privacy notice (not on emergencies or STOP)
+    if (replies.length > 0 && !patient.consentAt && !decision.urgent && decision.intent !== "optout") {
+      replies = [`${replies[0]}
+
+${M.consentNotice}`, ...replies.slice(1)];
+      await db.update(patients).set({ consentAt: now }).where(eq(patients.id, patient.id));
+    }
+    if (red.redacted && replies.length > 0 && !silenced) replies = [...replies, M.sensitiveWarn];
+
     for (const r of replies) await queueOutgoing(patient.id, r, "auto", { intent: decision.intent });
     await safeDispatch();
   }
@@ -295,6 +360,9 @@ async function applyActions(patientId: number, actions: Action[], s: EngineSetti
         break;
       case "cancel":
         await db.update(appointments).set({ status: "cancelled" }).where(and(eq(appointments.id, a.id), eq(appointments.patientId, patientId)));
+        break;
+      case "setOptOut":
+        await db.update(patients).set({ optedOut: a.value }).where(eq(patients.id, patientId));
         break;
       case "patientConfirm":
         await db.update(appointments).set({ patientConfirmed: true }).where(and(eq(appointments.id, a.id), eq(appointments.patientId, patientId)));
@@ -354,9 +422,13 @@ export async function setAppointmentStatus(id: number, status: "confirmed" | "ca
   const [pt] = await db.select({ lang: patients.lang }).from(patients).where(eq(patients.id, appt.patientId));
   const plang = langFor(pt?.lang, s);
   if (status === "confirmed") {
-    await queueOutgoing(appt.patientId, msgs(plang).doctorConfirmed(appt.consultType, s.doctorName, formatSlot(appt.startsAt, s.timezone)), "doctor");
+    await queueOutgoing(appt.patientId, msgs(plang).doctorConfirmed(appt.consultType, s.doctorName, formatSlot(appt.startsAt, s.timezone)), "doctor", {
+      template: { key: "update", params: updateParams(plang, s.doctorName, formatSlot(appt.startsAt, s.timezone), "confirmed") },
+    });
   } else if (status === "cancelled") {
-    await queueOutgoing(appt.patientId, msgs(plang).doctorCancelled(formatSlot(appt.startsAt, s.timezone)), "doctor");
+    await queueOutgoing(appt.patientId, msgs(plang).doctorCancelled(formatSlot(appt.startsAt, s.timezone)), "doctor", {
+      template: { key: "update", params: updateParams(plang, s.doctorName, formatSlot(appt.startsAt, s.timezone), "cancelled") },
+    });
   }
   await safeDispatch();
   return appt;
@@ -381,16 +453,17 @@ export async function runMaintenance() {
 
   let reminders = 0;
   for (const { appt, patient } of rows) {
+    if (patient.optedOut) continue; // no reminders after STOP
     const M = msgs(langFor(patient.lang, settings));
     const msUntil = appt.startsAt.getTime() - now.getTime();
     const when = formatSlot(appt.startsAt, settings.timezone);
     if (msUntil <= 2 * 3600_000 && !appt.reminder2Sent) {
       await db.update(appointments).set({ reminder2Sent: true, reminder24Sent: true }).where(eq(appointments.id, appt.id));
-      await queueOutgoing(appt.patientId, M.reminder2(appt.consultType, settings.doctorName, when), "reminder", { intent: "reminder" });
+      await queueOutgoing(appt.patientId, M.reminder2(appt.consultType, settings.doctorName, when), "reminder", { intent: "reminder", template: { key: "reminder", params: reminderParams(settings.doctorName, appt.consultType, when) } });
       reminders++;
     } else if (msUntil > 2 * 3600_000 && !appt.reminder24Sent) {
       await db.update(appointments).set({ reminder24Sent: true }).where(eq(appointments.id, appt.id));
-      await queueOutgoing(appt.patientId, M.reminder24(appt.consultType, settings.doctorName, when), "reminder", { intent: "reminder" });
+      await queueOutgoing(appt.patientId, M.reminder24(appt.consultType, settings.doctorName, when), "reminder", { intent: "reminder", template: { key: "reminder", params: reminderParams(settings.doctorName, appt.consultType, when) } });
       reminders++;
     }
   }

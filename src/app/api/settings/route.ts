@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { guard } from "@/lib/auth";
 import { calendarKey, hashPin, randomToken } from "@/lib/crypto";
+import { TEMPLATE_LANG_RE, TEMPLATE_NAME_RE } from "@/lib/templates";
 import { getSettings, isValidTimezone, publicSettings, saveSettings, type SettingsPatch } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,21 @@ export async function PUT(req: Request) {
   }
   if (typeof b.autoReply === "boolean") patch.autoReply = b.autoReply;
   if (typeof b.autoConfirm === "boolean") patch.autoConfirm = b.autoConfirm;
+
+  for (const k of ["templateReminderEn", "templateReminderUr", "templateUpdateEn", "templateUpdateUr"] as const) {
+    const v = str(k, 512);
+    if (v !== undefined) {
+      if (!TEMPLATE_NAME_RE.test(v)) return NextResponse.json({ error: "Template names use only lowercase letters, digits and underscores" }, { status: 400 });
+      patch[k] = v;
+    }
+  }
+  for (const k of ["templateLangEn", "templateLangUr"] as const) {
+    const v = str(k, 10);
+    if (v !== undefined) {
+      if (!TEMPLATE_LANG_RE.test(v)) return NextResponse.json({ error: "Template language must look like en, ur or en_US" }, { status: 400 });
+      patch[k] = v;
+    }
+  }
 
   // secrets: only overwrite when a non-empty value is supplied
   for (const k of ["accessToken", "appSecret"] as const) {

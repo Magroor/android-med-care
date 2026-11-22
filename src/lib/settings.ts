@@ -17,6 +17,13 @@ export type Settings = {
   defaultLanguage: "en" | "ur";
   autoReply: boolean;
   autoConfirm: boolean;
+  // approved WhatsApp template names (used outside the 24h window) + their Meta language codes
+  templateReminderEn: string;
+  templateReminderUr: string;
+  templateUpdateEn: string;
+  templateUpdateUr: string;
+  templateLangEn: string;
+  templateLangUr: string;
   phoneNumberId: string;
   // secrets (encrypted at rest)
   accessToken: string;
@@ -41,6 +48,12 @@ const DEFAULTS: Record<string, string> = {
     "Please bring a photo ID, previous prescriptions and any recent reports. Arrive 10 minutes early. If a blood test is planned, fast for 8–10 hours unless told otherwise (water is fine).",
   autoReply: "true",
   autoConfirm: "true",
+  templateReminderEn: "",
+  templateReminderUr: "",
+  templateUpdateEn: "",
+  templateUpdateUr: "",
+  templateLangEn: "en",
+  templateLangUr: "en", // Roman Urdu is not a Meta language code; templates are usually filed under English
   phoneNumberId: "",
   accessToken: "",
   appSecret: "",
@@ -92,6 +105,12 @@ export async function getSettings(): Promise<Settings> {
     defaultLanguage: raw.defaultLanguage === "en" ? "en" : "ur",
     autoReply: raw.autoReply !== "false",
     autoConfirm: raw.autoConfirm !== "false",
+    templateReminderEn: raw.templateReminderEn,
+    templateReminderUr: raw.templateReminderUr,
+    templateUpdateEn: raw.templateUpdateEn,
+    templateUpdateUr: raw.templateUpdateUr,
+    templateLangEn: raw.templateLangEn || "en",
+    templateLangUr: raw.templateLangUr || "en",
     phoneNumberId: raw.phoneNumberId,
     accessToken: raw.accessToken,
     appSecret: raw.appSecret,
@@ -141,6 +160,12 @@ export function publicSettings(s: Settings) {
     defaultLanguage: s.defaultLanguage,
     autoReply: s.autoReply,
     autoConfirm: s.autoConfirm,
+    templateReminderEn: s.templateReminderEn,
+    templateReminderUr: s.templateReminderUr,
+    templateUpdateEn: s.templateUpdateEn,
+    templateUpdateUr: s.templateUpdateUr,
+    templateLangEn: s.templateLangEn,
+    templateLangUr: s.templateLangUr,
     phoneNumberId: s.phoneNumberId,
     hasAccessToken: !!s.accessToken,
     hasAppSecret: !!s.appSecret,
